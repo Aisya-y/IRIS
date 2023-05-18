@@ -33,7 +33,6 @@ ClassMethod saveData(code As %Integer, name As %String, kanaName As %String, bir
     ・12桁以上
     */
 
-
     set result = $$$OK    
     set message = ""
     set data = ##class(cstm.data.Customer).%OpenId(code)
