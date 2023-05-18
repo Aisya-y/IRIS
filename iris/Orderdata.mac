@@ -1,0 +1,803 @@
+ROUTINE Orderdata
+
+saveData(Number,Orderer,Date,Supplier,Global)
+202202
+    //set oc = $i(^Order("orderCounter",Number))
+    set oc = 1
+
+	//Numberが５桁
+    if (Number '< 10000),(Number '> 99999) {
+	//if ( ( $l( Number ) = 5) ){
+
+		//注文情報
+		set date = $zdh( $tr( Date, "/", "-"), 3)
+        //ここでデータを変数に代入
+        set header = $lb(Orderer,date,Supplier)
+		//set ^Order(Number) = Orderer_"^"_date_"^"_Supplier
+
+
+        kill itemData, ^Order(Number), ^OrderI(Number)
+        //注文詳細情報データの作成
+        do makeData(Global, .itemData)
+
+        //ここでグローバルに書き込む★（注文情報）
+        set ^Order(Number) = header
+        //^Order(OrderNumber,seq) = itemDataの形にする。★（注文詳細情報）
+        //詳細グローバルに複数の情報がある場合はseqに連番が入る
+        merge ^Order(Number) = itemData
+
+        set c = ""
+        for {
+            set c = $order(^Order(Number, c), 1, d) quit:c=""
+            //^Order(OrderNumber,OrderCode) = seqの形にする★（注文インデックス）
+            //商品番号検索の際に使用できるグローバル、データ（seq部分）がNULLなら新規の商品追加
+            set ^OrderI(Number, $p(d,"^", 1)) = c
+        }
+
+        quit
+
+    }
+
+getList(mode, require)
+
+    kill hData
+    //注文番号検索
+    if (mode = 1) {
+        //注文情報データの作成（配列）
+        do getDataHeader(require, .hData)
+        quit:hData=""
+
+        set r = ""
+        for {
+            //配列hDataから注文情報の各項目を取り出して書き出し
+            set r = $order(hData(r),1,d) q:r=""
+            w d,!
+        }
+
+        write "注文商品：",!
+
+        set seq = ""
+        for {
+            //注文詳細情報（注文商品）を書き出し
+            set seq = $order(^Order(require, seq)) q:seq=""
+            set item = $$getItem(require, seq)
+            w item,!
+        }
+
+        w "--------------------------------------",!
+
+    //商品番号検索
+    } elseif (mode = 2) {
+        set orderNum = ""
+        for {
+            set orderNum = $order(^Order(orderNum)) q:orderNum=""
+            set seq=""
+            kill list
+            for {
+                //注文詳細データを配列に代入
+                set seq=$order(^Order(orderNum, seq),1, dat) q:seq=""
+                //商品名を切り出して
+                set name = $li(dat, 2)
+                //検索条件内容を含む商品名かどうか確認
+                if (name [ require) {
+                    set item = $$getItem(orderNum, seq)
+                    //一致した注文詳細情報を配列（list）にいれ
+                    set list(seq) = item
+                }
+            }
+
+            //注文詳細データがあったら
+            if $d(list) {
+                //注文情報を作成
+                do getDataHeader(orderNum, .hData)
+                
+                set r = ""
+                for {
+                    //書きだし
+                    set r = $order(hData(r),1,d) q:r=""
+                    w d,!
+                }
+
+                write "注文商品：",!
+
+                set seq=""
+                for {
+                    //注文詳細情報を書き出し
+                    set seq = $order(list(seq), 1, d) q:seq=""
+                    w d,!
+                }
+
+                w "--------------------------------------",!
+            }
+        }
+    }
+
+    /*
+
+
+
+    for{
+        set orderNum = $order(^Order(orderNum),1,keyData) quit:orderNum=""
+        set seq = ""
+
+        //注文番号完全一致
+        if ( mode = 1 ){
+
+            if ( orderNum = require){
+                do getData( orderNum, REQUIRE, .hData )
+            }
+
+        //商品名部分一致
+        } elseif ( mode = 2 ){
+            set flg = 0
+            for{
+                set seq = $order(^Order(orderNum, seq),1,iskeyData) quit:seq=""
+                set INAME = $p(iskeyData,"^",2)
+
+                if ( INAME [ require ){
+                    set flg = 1
+                    quit
+                }
+            }
+            
+            do:flg getData( orderNum, .hData )
+        } 
+
+        set DK =""
+        for{
+            set DK = $order(hData(orderNum,DK),1,GDATA) quit:DK=""
+            set GDATA = GDATA_$C(13,10)
+
+            w GDATA
+        }
+
+    }
+    */
+
+    quit
+
+
+addOrderDetail(Number,Code,Name,Price,Pieces)
+
+    set ADDKEY = ""
+    //注文番号がない場合はここでquit
+    set returnParam = $s($g(^Order(Number))'="":"",1:"該当の注文番号は存在しません。")
+    quit:returnParam'="" returnParam
+
+    set count = 0
+    //既存商品の数量を更新する場合
+    if ($d(^OrderI(Number, Code))) {
+        set seq = ^OrderI(Number, Code)
+        //変数（注文情報データ）に元情報を代入
+        set dat = ^Order(Number, seq)
+        //注文情報データの数量部分に新しい数量を上書き
+        set $li(dat,2) = $li(dat, 2) + Pieces
+        //注文情報を更新（グローバルに書き込み）
+        set ^Order(Number, seq) = dat
+    //新規商品の追加の場合
+    } else {
+        //既存のインデックス番号から新規インデックス番号を取得
+        set seq = $order(^Order(Number, ""), -1) + 1
+        //注文詳細情報をグローバルに書き込み
+        set ^Order(Number, seq) = $lb(Code,Pieces)
+        //注文インデックスをグローバルに書き込み
+        set ^OrderI(Number, Code) = seq
+    }
+
+    /*
+    for{
+        set ADDKEY = $order(^Order(Number,ADDKEY),1,addData) quit:ADDKEY=""
+        kill itemData
+        kill ^||addlist(1)
+
+        if (Code = $p(addData,"^",1)){ 
+            set count= count + 1
+            set ic = $p(addData,"^",1)
+            set in = $p(addData,"^",2)
+            set ipr = $p(addData,"^",3)
+            set ipi = $p(addData,"^",4) + Pieces
+            set AK = ADDKEY
+            quit
+        }
+    }
+
+    //同じ商品コードの追加注文
+    if (count '= 0 ){
+        set ^||addlist(1) = ic_"^"_in_"^"_ipr_"^"_ipi
+        do makeData("^||addlist", .itemData)
+        quit
+
+        //新しい商品コードの追加注文 
+    }else{
+        set ^||addlist(1) = Code_"^"_Name_"^"_Price_"^"_Pieces
+        set oc = $i(^Order("orderCounter",Number))
+        do makeData("^||addlist", .itemData)
+        quit
+    }
+    */
+
+    quit returnParam
+
+
+deleteData(mode,Number,Code)
+    //set dkey=""
+    //set delData = ""
+    set return = ""
+    //注文番号で検索し、削除
+    if (mode = 1) {
+        if ($g(^Order(Number)) '= "") set return = "該当する情報はありません。"
+        
+        kill ^Order(Number)
+        kill ^OrderI(Number)
+    //商品番号で検索し、削除
+    } else {
+        /*
+        if ($g(^Order(Number, Code)) '= "") set return = "該当する情報はありません。"
+        kill ^Order(Number, Code)
+        */
+
+        if ($d(^OrderI(Number, Code)) = 0 ) set return = "該当する情報はありません。"
+        
+        quit:return'=""
+        set seq = ^OrderI(Number, Code)
+        kill ^Order(Number, seq)
+        kill ^OrderI(Number, Code)
+
+    }
+
+    /*
+
+    for{
+        set dkey= $order(^Order(Number,dkey),1,dData) quit:dkey=""
+        
+        if ( mode = 1 ) & ( $g( ^Order( Number )) '= "" ){
+
+            kill ^Order( Number )
+            set delData = 2
+
+        }elseif ( mode = 2 ) & ( $g( ^Order( Number , Code )) '= ""){
+
+            kill ^Order( Number, Code)
+            set delData = 1
+
+        }
+    }
+
+    if ( $g(delData) =""){
+        set return = "該当する情報はありません。"
+    }
+    */
+
+    quit return
+
+makeData(global, &data){
+
+	set key = "", cnt = 0
+    kill data
+    
+    for{
+		set key = $order(@global@(key), 1, g) quit:key=""
+        set code = $p(g, "^", 1)
+        //7～9で始まる7桁の数字以外はcontinue
+        if (code < 7000000)!(code > 9999999) {
+            continue
+        }
+        set cnt = cnt + 1
+        set item= $lb($p(g, "^", 1),$p(g, "^", 4))
+        set data(cnt) = item
+        //set data(cnt) = g
+
+        //set ^Order(orderCode,orderCounter) = itemData
+	}
+    zw data
+    quit
+
+}
+
+getDataHeader( orderCode, &returnData )
+
+    kill returnData set returnData = ""
+
+    //注文情報がなければquit
+    quit:'$d(^Order(orderCode))
+
+    set data = ^Order(orderCode)
+    //record注文情報データを代入
+    set record = $lb(orderCode, $p(data, "^", 1), $zd($p(data, "^", 2), 3), $p( data, "^", 3))
+    
+    set b = 0
+    for title = "注文番号","注文者","注文日","注文先"{
+
+        set b=b+1
+        //注文情報の項目名とデータを配列に代入
+        set returnData(b) = title_":"_$li(record, b)
+    }
+
+    set returnData = "ok"
+
+    quit
+
+getItem(orderNum, seq)
+    set dat = ^Order(orderNum, seq)
+
+    set code = $p(dat,"^",1)
+    set ct = $e(code,1,1)
+    set name = $p(dat, "^", 2)
+    set price = $p(dat,"^",3)_"円"
+    set pieces = $p(dat,"^",4)
+    set pieces = pieces_$s(ct=8:"箱" ,ct=9:"個" ,ct=7:"本" ,1:"")
+
+    set item = code_":"_name_":"_price_":"_pieces
+
+    quit item
+
+    /*
+totalingNenrei
+
+    set now = $p($zd($h,3),"-",1)
+    set Code="",nendai = ""
+    kill nendaiList,dispList
+
+    for{
+        //注文データから顧客番号を取得
+        set Code=$order(^Order(Code),1,codeData) quit:Code=""
+        set id = $p(codeData,"^",1)
+        //顧客データから年代を取得
+        set Data = ^Customer(id)
+        set umaredosi = $p($zd($li(Data,3),3),"-",1)
+        set nenrei = now - umaredosi
+        set nendai = $s((nenrei<10):"10歳未満", (10<= nenrei<100):($e(nenrei,1,1)*10_"代"),(100<nenrei):"100歳以上")
+        //年代別顧客人数のリストnendaiListを作成
+        if ($d(nendaiList(nendai))'=0){
+            set nendaiList(nendai) = nendaiList(nendai) +1
+        }else{
+            set nendaiList(nendai) = 1
+        }
+
+        set itemCode=""
+        for{
+            //注文詳細データと顧客の年代を紐づけて
+            set itemPieces=0,ninzuu=0
+            set itemCode = $order(^Order(Code,itemCode),1,itemData) quit:itemCode=""
+            set itemName = $p(itemData,"^",2)
+            set itemPrice = $p(itemData,"^",3)
+
+            //年代別注文人数、合計注文数、合計額のリストdispListを作成
+            if ($d(dispList(nendai,itemName))'=0){
+                set itemPieces = $p(dispList(nendai,itemName),",",2) + $p(itemData,"^",4)
+                set ninzuu = $p(dispList(nendai,itemName),",",1)+1
+            }else{
+                set itemPieces = $p(itemData,"^",4)
+                set ninzuu = 1
+            }
+            set dispList(nendai,itemName) = ninzuu_","_itemPieces_","_itemPrice
+
+        }
+
+    }
+    
+    //一覧データの作成
+    set nendaiKey = "",totalingData="",total = 0
+
+    set totalingData="年代(人数)"_$c(9)_"商品名"_$c(9)_"注文人数"_$c(9)_"注文数"_$c(9)_"合計"_$C(13,10)
+
+    for{
+        set nendaiKey = $order(nendaiList(nendaiKey),1,nendaiData) quit:nendaiKey=""
+        set totalingData = totalingData_nendaiKey_"("_nendaiData_")"_$c(13,10)
+        set dispKey="",count=0
+        for{
+            //dispList(nendai,itemName) = ninzuu,itemPieces,itemPrice
+            set dispKey = $order(dispList(nendaiKey,dispKey),1,dispData) quit:dispKey=""
+            set orderNinzuu = $p(dispData,",",1)
+            set orderSuu = $p(dispData,",",2) 
+            set totalPrice = $p(dispData,",",3) * orderSuu
+            set totalingData = totalingData_$c(9)_$c(9)_dispKey_$c(9)_orderNinzuu_$c(9)_orderSuu_$c(9)_totalPrice_$c(13,10)
+
+            set count=count+1
+        }
+
+    }
+
+    //データの書き出し
+    write totalingData
+
+    quit
+
+    */
+
+totalingNenrei
+    kill ^log
+    set now = $p($zd($h,3),"-",1)
+    set Code="",nendai=""
+
+    //商品名と価格に列番号を足したリストcolumnListを作成
+    set itemCode="",columnNumber=1
+    kill columnList
+    for{
+        set itemCode = $order(^Item(itemCode),1,itemData) quit:itemCode=""
+        set itemName = $li(itemData,1)
+        set itemPrice = $li(itemData,2)
+        set columnList(itemCode) = $lb(columnNumber,itemName,itemPrice)
+            
+        set columnNumber = columnNumber +1
+    }
+
+    kill nendaiList,dispList
+    set codeData = ""
+
+    for{
+
+        //注文データから顧客番号を取得
+        set Code=$order(^Order(Code),1,codeData) quit:Code=""
+        set id = $li(codeData,1)
+
+        //顧客データから年代を取得
+        set Data = ^Customer(id)
+        set umaredosi = $p($zd($li(Data,3),3),"-",1)
+        set nenrei = now - umaredosi
+        set nendai = $s((nenrei<10):"~10", (9<nenrei<100):($e(nenrei,1,1)*10),(100<nenrei):"100~")
+
+        //年代別顧客人数のリストnendaiListを作成
+        if ($d(nendaiList(nendai))'=0){
+            set nendaiList(nendai) = nendaiList(nendai) +1
+        }else{
+            set nendaiList(nendai) = 1
+        }
+
+        set seq = "",purchaseItemCode=0,purchaseNumber=0,ninzuu=0,totalPrice=0
+
+        for{
+            set seq = $order(^Order(Code,seq),1,kounyuuData) quit:seq=""
+            set purchaseItemCode = $li(kounyuuData,1)
+            set purchaseNumber = $li(kounyuuData,2)
+
+            /*
+            set logseq= $INCREMENT(^log("log1"))
+            set ^log("log1", logseq)= $lb(Code,seq,kounyuuData)
+            */
+
+            //商品コードが一致する商品のdispListにデータをいれる
+            set columnNumber = $li(columnList(purchaseItemCode),1)
+            set itemPrice = $li(^Item(purchaseItemCode),2)
+
+            if ($d(dispList(nendai,columnNumber))'=0){
+                set ninzuu = $li(dispList(nendai,columnNumber),1) +1
+                set purchaseNumber = $li(dispList(nendai,columnNumber),2) +purchaseNumber
+                set totalPrice = $li(dispList(nendai,columnNumber),3)+(itemPrice*purchaseNumber)
+
+            }else{
+                set ninzuu = 1
+                set totalPrice = itemPrice*purchaseNumber
+            }
+
+            set dispList(nendai,columnNumber) = $lb(ninzuu,purchaseNumber,totalPrice)
+
+        }
+
+        //購入のない商品のdispLIsに0をいれる
+        set noitemColumn =""
+        for{
+            set noitemColumn = $order(columnList(noitemColumn),1,noItemData) quit:noitemColumn=""
+            set checkcolumn = $li(noItemData,1)
+            if ( $d(dispList(nendai,checkcolumn)) =0){
+                set dispList(nendai,checkcolumn) = $lb(0,0,0)
+            }
+        }
+
+    } //^Order
+
+    //書き出し
+    
+    //年代
+    set nendaiKey = "",totalingData=""
+    set rowNumber = 1
+    for{
+
+        set nendaiKey = $order(nendaiList(nendaiKey),1,Ninzuu) quit:nendaiKey=""
+        set columnKey="",dispKey = ""
+        set count=0
+
+        //1行目タイトル行
+        if (rowNumber = 1){
+
+            write "年代"_$c(9)_"人数"_$c(9)
+
+            for{
+                set dispKey = $order(columnList(dispKey),1,dispData) quit:dispKey=""
+                set dispName = $li(dispData,2)
+                write dispName_$c(9)
+            }
+
+            write !,"===========================================================================================================================",!
+
+        }  
+
+        write nendaiKey_"代"_$c(9)_Ninzuu_$c(9)
+
+        //２行目以降データ行
+        for{
+            set dispKey = $order(dispList(nendaiKey,dispKey),1,dispData) quit:dispKey=""
+            set purchaseNumber = $li(dispData,2)
+            set kounyuuPrice = $li(dispData,3)
+            set count=count+1
+            write purchaseNumber_$c(9)
+        }
+        set rowNumber = rowNumber +1
+        w !
+
+    }
+
+    quit
+
+
+totalingSeibetsu
+
+    //^Order（Code）＝$lb（Id,OrderData,Suppier）
+    //^Order(Code,Seq)=$lb(ItemCode,Pieces)
+    //^Customer(Id)=$lb(Name,Kana,Birthday,Signupdata,Seibetsu,PhoneNumber)
+    //^Item(ItemCode)=$(ItemName,Price)
+
+    //======================================================================================
+    
+    //1,顧客情報（＾Customer（Id））から性別(Seibetsu)でNinzuuList,SeibetsuListを作成する
+        //NinzuuList（Seibetsu）=ninzuu
+    //2,商品情報（＾Item（ItemCode））から列（Column）でColumnListを作成する
+        //ColumnListのうち、別に後記のとおり、以下情報を追記する。（（Column、ItemCode）”項目名”）
+        //※(1,1)”性別”、(2,2)”人数”、(最大値,10000001)”合計”
+        //ColumnList（Column）＝$lb（ItemCode,ItemName）
+    //3,注文情報（＾Order（Code））から顧客番号（Id）を取得し、SeibetsuListから性別を取得する
+    //4,注文詳細情報（＾Order（Code,Seq））から商品番号を取得し、ColumnListからColumnを取得する
+    //5,注文詳細情報（＾Order（Code,Seq））から各商品の注文数（NewSeq）と、各購入数（Pieces）
+        //3で取得したSeibetsu、4で取得したColumnでOrderListを作成する
+        //OrderList(Seibetsu,Column,NewSeq)=Pieces
+        //→5は省略
+    //6,OrderListをnewSeq分回して、各商品の購入総数でDispListを作成する。
+        //→4のfor文の中で、各商品の購入総数のDispListを作成する。
+        //DispListに購入数0のデータとを性別別購入総額入れる
+        //DispList（Seibetsu,Column）=totalPieces
+    //7,各商品別購入総数のItemTotalList(Column)を作成する。
+
+    //8,DispListを回してデータの書き出し
+        //・1行目に項目名$li（ColumnList,2）を書き出す。
+        //・2行目以降に各データを書き出す
+
+    //===その１=================================================================================
+    
+    //1,
+    set Id = "",ninzuu=0,TotalNinzuu=0
+    kill NinzuuList,SeibetsuList
+
+    for{
+        set Id = $order(^Customer(Id),1,CustomerData) quit:Id=""
+        set Seibetsu = $li(CustomerData,5)
+        set SeibetsuList(Id) = Seibetsu
+        if ($d(NinzuuList(Seibetsu)) '= 0){
+            set ninzuu = NinzuuList(Seibetsu) +1
+        }else{
+            set ninzuu = 1 
+        }
+        set NinzuuList(Seibetsu) = ninzuu
+        set TotalNinzuu = TotalNinzuu+1
+    }
+
+    //2,
+    kill ColumnList
+    set ColumnList(0000001) = $lb(1,"性別")
+    set ColumnList(0000002) = $lb(2,"人数")
+    set ItemCode="",Column=3
+
+    for{
+        set ItemCode = $order(^Item(ItemCode),1,ItemData) quit:ItemCode=""
+        set ItemName = $li(ItemData,1)
+        set ColumnList(ItemCode) = $lb(Column,ItemName)
+        set Column = Column +1
+    }
+
+    set ColumnList(10000001) = $lb(Column,"合計")
+    
+    //3,4,5（→5は省略）
+    set Code = "",Seq=""
+    kill OrderList,DispList
+        kill ItemTotalList
+            
+    for{
+        set Code = $order(^Order(Code),1,OrderData) quit:Code=""
+        set CustomerId = $li(OrderData,1)
+        //3
+        set Seibetsu = SeibetsuList(CustomerId)
+
+        for{
+            set Seq = $order(^Order(Code,Seq),1,DetailData) quit:Seq=""
+            set ItemCode = $li(DetailData,1)
+            set Pieces = $li(DetailData,2)
+            //4
+            set Column = $li(ColumnList(ItemCode),1)
+
+            //6
+            if ($d(DispList(Seibetsu,Column)) '= 0 ) {
+                set DispList(Seibetsu,Column) = DispList(Seibetsu,Column) + Pieces
+            }else{
+                set DispList(Seibetsu,Column) = Pieces
+            }
+
+        }
+
+        set CheckColumn = 3, SeibetsuTotal = 0
+        set TotalColumn = $li(ColumnList(10000001),1)
+        kill ItemTotalList
+
+        for{
+            set NoItemColumn = $d(DispList(Seibetsu,CheckColumn)) quit:CheckColumn=TotalColumn
+
+            //購入数０をデータに入れる
+            if ( NoItemColumn = 0){
+                set DispList(Seibetsu,CheckColumn) = "0"
+            //性別別購入数合計
+            }else{
+                set SeibetsuTotal = SeibetsuTotal + DispList(Seibetsu,CheckColumn)
+            }
+
+            set CheckColumn = CheckColumn + 1
+        }
+
+        set DispList(Seibetsu,TotalColumn) = SeibetsuTotal
+
+    }
+
+    //...................................................................................
+
+    //8
+    set DispSeibetsu = ""
+    set rowNumber = 1
+    kill Total
+
+    for{
+
+        set DispSeibetsu = $order(NinzuuList(DispSeibetsu),1,Ninzuu) quit:DispSeibetsu=""
+        set DispKey=""
+        //Columns1行目・項目名
+        if (rowNumber = 1){
+            //write "性別"_$c(9)_"人数"_$c(9)
+
+            for{
+                set DispKey = $order(ColumnList(DispKey),1,ColumnData) quit:DispKey=""
+                set ColumnName = $li(ColumnData,2)
+                write ColumnName_$C(9)
+            }
+
+            //write "合計",!
+            write !,"===========================================================================================================================",!
+
+        }
+
+        write !
+
+        //Rows
+        set RowTitle = $case(DispSeibetsu,0:"不明",1:"男性",2:"女性",9:"その他")
+        write RowTitle_$c(9)_Ninzuu_$c(9)
+
+        //Columns2行目～・データ
+        for{
+            set DispKey = $order(DispList(DispSeibetsu,DispKey),1,ColumnData) quit:DispKey=""
+
+            if ( 2 < DispKey)
+            write ColumnData_$c(9)
+            set Total(DispKey) = $g(Total(DispKey))+ColumnData
+        }
+        set rowNumber = rowNumber +1
+        
+    }
+
+    //各商品ごとの総購入数
+    //総人数
+    write !,$c(9),TotalNinzuu,$c(9)
+    set TotalKey = ""
+
+    for{
+        set TotalKey = $order(Total(TotalKey),1,TotalData) quit:TotalKey=""
+        write TotalData_$c(9)
+    }
+
+
+
+
+
+    //====その２========================================================================
+
+    //1、Rowリストを作成する。　Row（RowNumber）＝RowName
+    //　×∟for文をRowNumberでまわす。条件（性別）+１（合計）の項目名分作成。
+    //　×∟条件（性別）は（＾Customer（Id））から取得する。
+    //　∟条件（性別）+１（合計）の項目名分作成。
+    //2、Columnリストを作成する。　Column（ColumnNumber）＝ColumnName
+    //3、Dispデータを作成する。　Disp（RowNumber）＝$lb（Data1,Data2,Data3,・・・）
+
+    //4、書き出し。1行目：Columnリスト、２行目～Dispリスト
+    //__________________________________________________________________________________
+
+    //1
+    /*
+    //RowTitleのリスト作成
+    set global = "^Customer"
+    set globalkey = ""
+    kill RowTitleList
+    for{
+        set globalkey = $order(@global@(globalkey),1,Data) quit:globalkey=""
+        write globalkey,!
+        set RowName = $li(Data,5)
+        if ( $d(RowTitleList(RowName)) '= 0){
+            set RowTitleList(RowName) = RowTitleList(RowName)_","_globalkey
+        }else{
+            set RowTitleList(RowName) = globalkey
+        }
+        set DataCode(globalkey) = RowName
+    }
+
+    //Rowリスト作成
+    set RowTitle = "",RowNumber = 1
+    kill Row
+    for{
+        set RowTitle = $order(RowTitleList(RowTitle)) quit:RowTitle=""
+        set Row(RowNumber) = RowTitle
+        set RowNumber = RowNumber +1
+    }
+    set Row(RowNumber) ="Total"
+    
+    //2  
+
+     //ColumnTitle
+    set global = "^Item"
+    set globalkey = ""
+    for{
+        set globalkey = $order(@global@(globalkey),1,Data) quit:globalkey=""
+        set ColumnName = $li(Data,1)
+        set ColumnTitleList(ColumnName) = globalkey
+    }
+
+    //Columnリスト/DataCodeリスト作成
+    set ColumnTitle = "",ColumnNumber = 3
+    kill Column,ItemNumber
+    set Column(0) = "性別"
+    set Column(1) = "人数"
+    for{
+        set ColumnTitle = $order(ColumnTitleList(ColumnTitle),1,Data) quit:ColumnTitle=""
+        set Column(ColumnNumber) = ColumnTitle
+        set ItemNumber(Data) = ColumnNumber
+        set ColumnNumber = ColumnNumber +1
+    }
+    set Column(ColumnNumber) = "合計"
+
+    //3
+
+    kill Disp
+    set row = ""
+
+    for{
+        set row = $order(RowTitleList(row),1,Data) quit:row=""
+        set count = 1
+        for{
+            set Code = $p(Data,",",count) quit:Code=""
+
+            set Seq = ""
+
+            for{
+                set Seq =$order(^Order(Code,Seq),1,DetailData) quit:Seq=""
+                set ItemCode = $li(DetailData,1)
+                set Pieces = $li(DetailData,2)
+                set column = ItemNumber(ItemCode)
+                set ColumnData(column) = Pieces
+            }
+            set count = count +1
+        }
+        //性別別、列データ作成
+        set count2 = 1
+
+        for{
+            set DispData = DispData_$s(DispData:""ColumnData(column),1:"")
+            set Disp(row) = ()
+        }
+        
+
+    }*/
+
+
+    quit

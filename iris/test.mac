@@ -1,0 +1,951 @@
+ROUTINE test
+    quit
+Test01(p)
+    set ^Abc = 1
+    set ^Abc(1) = "あいう"
+    set ^Abc(1,"あいう") = 1
+
+    set result = p *5
+    quit result
+
+Test02
+    set key =""
+    for{
+        set key=$order(^Data(key))
+        quit:key=""
+        write key,":",^Data(key),! ;!は改行
+    }
+    quit
+
+Test03
+    set key=""
+    for  set key=$order(^Data(key)) quit:key=""  do
+    . write key,":",^Data(key),! 
+    quit
+
+
+saveData(userCode,userName,nameKana,Birth,sex)
+    set data = $s(Birth '="":$zdh($tr(Birth,"/","-"),3), 1:"")
+
+    //set data = $s(data '="":)
+    set ^User(userCode) = userName_"^"_nameKana_"^"_data_"^"_sex
+    quit
+
+
+getData(num)
+    set result = ^User(num)
+    quit result
+
+getList()
+    set c =0
+    for{
+        set c = $order(^User(c),1,D) //$order(配列,昇降淳,データがあったらデータをいれる)
+        quit:c=""
+        set D = ^User(c) //上記部分
+        set na = $tr($p(D,"^",1,2),"^",":")
+        set bi = $zd($p(D,"^",3),3)
+        set se = $case($p(D,"^",4),0:"不明",1:"男性",2:"女性",9:"その他")
+        set ud = c_":"_na_":"_bi_":"_se
+        //set $p(ud,":",1) = na
+        //set $p(ud,":",2) = bi
+        //set $p(ud,":",3) = se
+
+        write ud,!
+    }
+
+    quit
+
+
+
+    //課題３
+getList3(mode,require)
+
+    set Num = 0
+    set Count = 0
+
+    for {
+
+        set Num = $order(^User(Num),1,Data)
+        quit:Num=""
+
+        set UData = ""
+        
+        if (mode = 1) {
+            //-- 性別
+            if ($p(Data, "^", 4) = require) {
+                set UData = $$layoutGet(Data)
+            }
+        } elseif (mode = 2)!(mode = 3) {
+            //-- カナ氏名
+            set w = $p(Data, "^", 2)
+            if (mode = 2)&(w [ require) {
+                set UData = $$layoutGet(Data)
+            }
+            if (mode = 3)&($e(w, 1, $l(require)) = require) {
+                set UData = $$layoutGet(Data)
+            }
+
+            /*
+            set r = $select(mode=2:(w [ require), 1:($e(w, 1, $l(require)) = require))
+            if (r) {
+                set UData = $$layoutGet(Data)
+            }
+            */
+        } else {
+            //-- 全員分
+            set UData = $$layoutGet(Data)
+        }
+
+        set:UData'="" Count = Count + 1
+        write:UData'="" UData,!
+    }
+
+    if ('Count) {
+        write "",!
+    }
+
+
+    /*
+        if ( Data '= "" ) {
+
+            set UData = ""
+
+            if ( require '= "" ) {
+
+                //性別数字一致
+                if ( mode = 1 ) {
+
+                    if ($p(Data, "^", 4) = require) {
+
+                        set $p(UData, ":", 1) = $tr($p(Data, "^", 1), "^", ":")
+                        set $p(UData, ":", 2) = $tr($p(Data, "^", 2), "^", ":")                        
+                        set $p(UData, ":", 3) = $zd($p(Data, "^", 3), 3)
+                        set $p(UData, ":", 4) = $case($p(Data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+                        set Count = Count+1
+
+                    } else {
+
+                        continue
+
+                    }
+
+                //カナ部分一致
+                } elseif ( mode = 2 ) {
+
+                    if ($p(Data, "^", 2) [ require){
+
+                        set $p(UData, ":", 1) = $tr($p(Data, "^", 1), "^", ":")
+                        set $p(UData, ":", 2) = $tr($p(Data, "^", 2), "^", ":")                        
+                        set $p(UData, ":", 3) = $zd($p(Data, "^", 3), 3)
+                        set $p(UData, ":", 4) = $case($p(Data, "^", 4), 0:"不明", 1:"男性0", 2:"女性", 9:"その他" )
+                        set Count = Count+1
+
+                    } else {
+
+                        continue
+                    }
+
+                //カナ前方一致
+                } elseif ( mode = 3 ) {
+
+                    if ($locate($p(Data, "^", 2),require) =1) {
+
+                        set $p(UData, ":", 1) = $tr($p(Data, "^", 1), "^", ":")
+                        set $p(UData, ":", 2) = $tr($p(Data, "^", 2), "^", ":")                        
+                        set $p(UData, ":", 3) = $zd($p(Data, "^", 3), 3)
+                        set $p(UData, ":", 4) = $case($p(Data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+                        set Count = Count+1
+
+                    } else {
+
+                        continue
+
+                    }
+                }
+
+            } else {
+
+                set $p(UData, ":", 1) = $tr($p(Data, "^", 1, 2),"^",":")
+                set $p(UData, ":", 2) = $zd($p(Data, "^", 3), 3)
+                set $p(UData, ":", 3) = $case($p(Data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+                set Count = Count+1
+
+            }
+
+            write UData,!
+        }
+    }
+
+    if ( Count = 0 ){
+
+        write "該当するデータはありません。"
+
+    }
+    */
+    quit
+
+    //課題５
+saveData5( userCode, userName, nameKana, Birth, sex )
+
+    set message5 = ""
+    quit:$g(userCode)=""
+
+    if ( $data( ^User( userCode )) #10 ){
+        set message5 = "社員コードが重複しています。"
+        quit message5
+    }
+
+    set birthDay = $s( Birth '="":$zdh( $tr( Birth, "/", "-" ), 3 ), 1:"")
+    set userdata = $lb( userName, nameKana, birthDay, sex )
+    set ^User( userCode ) = userdata
+
+    quit
+
+getData5( userCode)
+
+    set qData = ""
+    quit:$d(^User( userCode ))=0
+
+    //基本情報取得
+    set qData = $$viewGet5(^User( userCode ))
+
+    set (shikakuDb, sesDb) = ""
+
+    set q=""
+    for {
+        set q = $order(^User( userCode, "資格", q), 1, qData) quit:q=""
+
+        set $p(data, "^", 1)=$li(qData, 1)
+        set $p(data, "^", 2)=$s($li(qData, 2)'="":$zd( $li(qData, 2), 3), 1:"")
+        set shikakuDb = $s(shikakuDb="":data, 1:shikakuDb_"|"_data)
+    }
+
+    set s=""
+    for{
+        set s = $order(^User( userCode, "SES", s), 1, sData) quit:s=""
+        set $p(data,"^",1)=$zd( s, 3)
+        set $p(data,"^",2)=sData
+        set sesDb = $s(sesDb="":data, 1:sesDb_"|"_data)
+    }
+
+    quit qData_","_shikakuDb_","_sesDb
+
+
+getList5(mode, require)
+
+    set Number5 = ""
+    set Count5 = 0
+
+    for{
+        set Number5 = $order( ^User( Number5 ), 1, Data5) quit:Number5=""
+
+        kill userData
+
+        //性別
+        if ( mode =1 ){
+
+            //set seibetsu = $s( (Data5 [ "^") =1 :$p( Data5, "^", 4 ), 1:$li( Data5, 4))
+            //List形式のみ
+            set seibetsu = $li(Data5,4)
+
+            if ( seibetsu = require){
+                do getDataList5( Number5, .userData)
+            }
+
+        //カナ一致
+        } elseif ( mode =2 ) ! ( mode = 3 ){
+
+            set kana = $li( Data5, 2 )
+            //部分一致
+            if ( mode = 2 )&( kana [ require ){
+                do getDataList5( Number5, .userData)
+            }
+
+            if ( mode = 3 ) & ( $e(kana, 1, $l( require )) = require ){
+                do getDataList5( Number5, .userData)
+            }
+        //条件なし
+        }else{
+            do getDataList5( Number5, .userData)
+    
+        } 
+
+        set:$g( userData )'="" Count5 = Count5+1
+
+        if ( $d( userData )#10 ){
+
+            //基本情報
+            write userData,!
+
+            //資格・SES情報
+            for key="q","w"{
+
+                set writekey = ""
+                for{
+                    set writekey = $order(userData(key,writekey), 1, getData) quit:writekey=""
+                    write getData,!
+                }
+
+            }
+
+        write "--------------------------",!
+
+        }   //データあり
+
+    }   //1人ずつループ
+
+    quit
+    
+
+addShikaku5(userCode, qualified, passData)
+
+    set return = ""
+
+    if ( (userCode '= "" ) & ( qualified '="") ){
+
+        set pData = $s(passData '= "":$zdh( $tr(passData, "/", "-"), 3), 1:"")
+        set $li(qData, 1) = qualified
+        set $li(qData, 2) = pData
+        set ^User( userCode, "資格", $i(^User(userCode, "資格"))) = qdata
+    //情報が不足している場合
+    }else{
+        set return = $s(userCode ="":"社員コードが入力されていません。",1:"資格名が入力されていません。")
+    }
+
+    quit return
+
+addSES5(userCode, startData, workPlace)
+
+    set return = ""
+
+    if ( ( userCode '= "") & ( startData '= "")){
+        set sData = $s( startData '= "":$zdh( $tr( startData, "/", "-"), 3), 1:"")
+        set ^User( userCode, "SES", sData ) = workPlace
+    }else{
+        set return = $s(userCode ="":"社員コードが入力されていません。",1:"開始日が入力されていません。")
+    }
+
+    quit return
+
+
+/// killData5(mode, userCode, qualified)
+killData5(userCode, qualified = "", mode = 1)
+
+    set killKey = ""
+    set killData = ""
+    set return = ""
+
+    set:mode="" mode = 1
+
+    //社員情報削除 ^User(userCode)=Name^Kana^birthDay^sex
+    if ( mode = 1){
+        w "ok",!
+        quit:$d(^User(userCode))=0 return
+        
+        kill ^User(userCode)
+
+    //資格情報削除 ^User(userCode,"資格",1~)=Qualified^passData
+    }elseif( mode=2 ){
+
+        quit:$d(^User(userCode,"資格"))=0
+
+        set killKey = ""
+
+        for{
+            set killKay = $order(^User(userCode,"資格",killKey),1,qData) quit:killKey=""
+            set data = $li(qData,1)
+            if (data = qualified){
+                kill ^User(userCode,"資格",killKey)
+            }
+        }
+
+    }
+
+    quit return
+
+viewGet5(returnData)
+
+    set returnData = ""
+
+    set $p(returnData,"^",1) = $li(getData, 1)
+    set $p(returnData,"^",2) = $li(getData, 2)
+    set $p(returnData,"^",3) = $zd($li(getData, 3), 3)
+    set $p(returnData,"^",4) = $case($li(getData, 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+    
+    quit returnData
+
+getDataList5( Number5, &userData)
+
+    set Data5 = ^User( Number5 )
+    kill userData
+    /*
+    set $p(userData, ":", 1) = $s( (Data5 [ "^") =1 :$p( Data5, "^", 1 ), 1:$li( Data5, 1))
+    set $p(userData, ":", 2) = $s( (Data5 [ "^") =1 :$p( Data5, "^", 2 ), 1:$li( Data5, 2))
+    set $p(userData, ":", 3) = $s( (Data5 [ "^") =1 :$zd($p( Data5, "^", 3 ), 3), 1:$zd($li( Data5, 3), 3))
+    set seibetsu = $s( (Data5 [ "^") =1 :$p( Data5, "^", 4 ), 1:$li( Data5, 4))
+    set $p(userData, ":", 4) = $case(seibetsu, 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+    */
+    //List形式のみ
+    set $p(userData, ":", 1) = $li(data, 1)
+    set $p(userData, ":", 2) = $li(data, 2)
+    set $p(userData, ":", 3) = $zd($li(data, 3), 3)
+    set $p(userData, ":", 4) = $case($li(data, 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+
+    set key="",key2=0
+    /*
+    for{
+        set a = $order( ^User( Number5, "資格", a), 1, UD) quit:a=""
+        set $p(item, ":", 1) = $s( (Data5 [ "^") =1 :$p( UD, "^", 1 ), 1:$li( UD, 1))
+        set getData = $s( (Data5 [ "^") =1:$p(UD, "^", 2), 1:$li(UD, 2))
+        set $p(item, ":", 2) = $s(getData="":"",1:$zd(getData, 3))
+        set b = b+1
+        set userData("q",b) = item
+    }
+
+    set a="", b=0
+
+    for{
+        set a = $order( ^User( Number5, "SES", a), 1, UD) quit:a=""
+        set $p(item, ":", 1) = $zd(a, 3)
+        set $p(item, ":", 2) = UD
+        set b = b+1
+        set userData("w",b) = item
+
+    }
+    */
+
+    //List形式のみ
+
+    for{
+        set key = $order(^User(Number5,"資格", key), 1, UD) quit:key=""
+        set $p(item,":", 1) = $li(UD, 1)
+        set $p(item,":",2) = $s($li(UD,2)="":"",1:$zd($li(UD,2),3))
+        set key2= key2+1
+        set userData("q", key2) = item
+    }
+
+    for{
+        set key=$order(^User(Number5,"SES",key), 1, UD) quit:key=""
+        set $p(item, ":", 1) = $zd(key, 3)
+        set $p(item, ":", 2) = UD
+        set key2 = key2+1
+        set userData("w",key2) = item
+    }
+
+
+    quit
+
+
+    //課題４
+saveData4( userCode, userName, nameKana, Birth,sex )
+    
+    set rm = ""
+
+    /*
+    set data = $get(^User(userCode))
+    if (data = "") {
+        set rm = "社員コードが重複しています。"
+        quit rm
+    }
+    */
+
+    if ($data(^User(userCode)) # 10) {
+        set rm = "社員コードが重複しています。"
+        quit rm
+    }
+
+    set birth = $s( Birth '="":$zdh( $tr( Birth, "/", "-"), 3 ), 1:"" )
+    set ^User( userCode ) = userName_"^"_nameKana_"^"_birth_"^"_sex
+
+    /*
+    set dup= $data( ^User( userCode ) )
+
+    if ( dup = 1 )!( dup = 11){
+        set rm = "社員コードが重複しています。"
+
+    }else{
+        set birth = $s( Birth '="":$zdh( $tr( Birth, "/", "-"), 3 ), 1:"" )
+        set ^User( userCode ) = userName_"^"_nameKana_"^"_birth_"^"_sex
+
+    }
+    */
+
+    quit ""
+
+getData4( userCode )
+
+    set qData = ""
+    set qDataB = ^User( userCode )
+    quit:qDataB=""
+
+    set ReturnData = ""
+
+    set qData = $$layoutGet4( qDataB )
+
+    set (shikakuDb, sesDb) = ""
+
+    set k=""
+    for {
+        set k = $order(^User( userCode, "資格", k), 1, uqd) quit:k=""
+        set $p(data,"^",1)=$p(uqd,"^",1)
+        set $p(data,"^",2)=$zd( $p(uqd,"^",2), 3)
+        set shikakuDb = $s(shikakuDb="":data, 1:shikakuDb_"|"_data)
+    }
+
+    set s=""
+    for{
+        set s = $order(^User( userCode, "SES", s), 1, usd) quit:s=""
+        set $p(data,"^",1)=$zd( s, 3)
+        set $p(data,"^",2)=usd
+        set sesDb = $s(sesDb="":data, 1:sesDb_"|"_data)
+    }
+
+    quit qData_","_shikakuDb_","_sesDb
+
+
+
+    if ( 'qData ){
+
+        set qDataA = ""
+        set k =""
+
+        //基本情報
+        set ReturnData = qData
+
+        //資格情報追加
+        for{
+
+            set k = $order(^User( userCode, "資格", k), 1, uqd) quit:k=""
+            set qDataA = qDataA_$zd( uqd, 3)
+            
+            set ReturnData = ReturnData_uqd
+
+        }
+
+        set sDataA = ""
+        set s = ""
+        //SES情報追加
+
+        for{
+
+            set s = $order(^User( userCode, "SES", s), 1, usd) quit:s=""
+            set sDataA = sDataA_"^"_$zd( s, 3)_"^"_usd
+
+
+        }
+
+        set ReturnData = ReturnData_"..."_sDataA
+
+        quit ReturnData
+
+    }
+
+getList4( mode, require)
+
+    set Num = 0
+    set Count = 0
+
+    for {
+
+        set Num = $order( ^User( Num ), 1, Data)
+        quit:Num=""
+
+        //set UData = ""
+        kill UData
+        
+        if (mode = 1) {
+
+            //性別
+            if ($p(Data, "^", 4) = require) {
+
+                do layoutGet4s(Num, .UData)
+            }
+
+        } elseif (mode = 2)!(mode = 3) {
+            //カナ
+            set w = $p(Data, "^", 2)
+
+            //部分一致
+            if (mode = 2)&(w [ require) {
+
+                do layoutGet4s(Num, .UData)
+
+            }
+
+            //前方一致
+            if (mode = 3)&($e(w, 1, $l(require)) = require) {
+
+                do layoutGet4s(Num, .UData)
+            }
+
+        } else {
+            //条件なし
+            do layoutGet4s(Num, .UData)
+        }
+
+        set:$g(UData)'="" Count = Count + 1
+
+        if ($d(UData)#10) {
+            write UData,!
+
+            set k = ""
+            for key="T","S" {
+                for {
+                    set k=$order(UData(key, k), 1, dt) quit:k=""
+                    write dt,!
+                }
+            }
+
+            /*
+            for {
+                set k=$order(UData("T", k), 1, dt) quit:k=""
+                write dt,!
+            }
+
+            set k=""
+            for {
+                set k=$order(UData("S", k), 1, dt) quit:k=""
+                write dt,!
+            }
+            */
+
+            //1人分終了位置
+            write "--------------------",!
+        }
+
+        /*
+        if ( UData'=""){
+            set Count = Count + 1
+            write UData,!
+
+            //資格
+            set qnum = "", QD = "", QDA = ""
+
+            for{
+
+                set qnum = $order( ^User( Num, "資格", qnum ), 1, QD )  quit:qnum=""
+                set QDB = $p(QD,"^",1)
+                set QDA = $zd($p(QD,"^",2),3)
+
+                write QDB,":",QDA,!
+
+            }
+
+            //SES
+            set WPD = "", WPDA = ""
+        
+            for{
+
+                set WPD = $order(^User( Num , "SES", WPD),1,WPDA) quit:WPD=""
+                set wdb = $zd(WPD,3)
+                set wda = WPDA
+                
+                write wdb,":",wda,!
+
+            }
+
+            //1人分終了位置
+            write "--------------------",!
+        } 
+        */
+
+    }
+
+    if ('Count) {
+        write "データがありません 。",!
+    }
+
+    quit
+
+
+
+
+    /*
+getList4(mode,require)
+
+    set Num = 0
+    set Count = 0
+
+    for {
+
+        set Num = $order(^User(Num),1,Data)
+        quit:Num=""
+
+        if ( Data '= "" ) {
+
+            set UData = ""
+
+            if ( require '= "" ) {
+
+                //性別数字一致
+                if ( mode = 1 ) {
+
+                    if ( $p( Data, "^", 4 ) = require ) {
+                        
+                        set $p(UData, ":", 1) = $tr($p(Data, "^", 1), "^", ":")
+                        set $p(UData, ":", 2) = $tr($p(Data, "^", 2), "^", ":")                        
+                        set $p(UData, ":", 3) = $zd($p(Data, "^", 3), 3)
+                        set $p(UData, ":", 4) = $case($p(Data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+                        set Count = Count+1
+
+
+                    } else {
+
+                        continue
+
+                    }
+
+                //カナ部分一致
+                } elseif ( mode = 2 ) {
+
+                    if ($p(Data, "^", 2) [ require){
+
+                        set $p(UData, ":", 1) = $tr($p(Data, "^", 1), "^", ":")
+                        set $p(UData, ":", 2) = $tr($p(Data, "^", 2), "^", ":")                        
+                        set $p(UData, ":", 3) = $zd($p(Data, "^", 3), 3)
+                        set $p(UData, ":", 4) = $case($p(Data, "^", 4), 0:"不明", 1:"男性0", 2:"女性", 9:"その他" )
+                        set Count = Count+1
+
+                    } else {
+
+                        continue
+                    }
+
+                //カナ前方一致
+                } elseif ( mode = 3 ) {
+
+                    if ($locate($p(Data, "^", 2),require) =1) {
+
+                        set $p(UData, ":", 1) = $tr($p(Data, "^", 1), "^", ":")
+                        set $p(UData, ":", 2) = $tr($p(Data, "^", 2), "^", ":")                        
+                        set $p(UData, ":", 3) = $zd($p(Data, "^", 3), 3)
+                        set $p(UData, ":", 4) = $case($p(Data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+                        set Count = Count+1
+
+                    } else {
+
+                        continue
+
+                    }
+                }
+
+            } else {
+
+                set $p(UData, ":", 1) = $tr($p(Data, "^", 1, 2),"^",":")
+                set $p(UData, ":", 2) = $zd($p(Data, "^", 3), 3)
+                set $p(UData, ":", 3) = $case($p(Data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+                set Count = Count+1
+
+            }
+
+            //社員個人情報
+            write UData,!
+
+            //社員資格情報
+            set qnum = ""
+            set QD = ""
+            set QDA = ""
+
+            for{
+
+                set qnum = qnum +1
+
+                if ( $Data(^User( Num, "資格", qnum )) = 1 ){
+
+                    set QD = ^User( Num, "資格", qnum )
+                    set QDA = $p(QD,"^",1)_":"_$zd($p(QD,"^",2),3)
+
+                }else{
+
+                quit
+
+                }
+
+                write QDA,!
+
+            }
+
+            //社員SES情報
+
+            set WPD = ""
+            set WPDA = ""
+        
+            for{
+
+                    set WPD = $order(^User( Num , "SES", WPD),1,WPDA)
+                    set wd = $zd(WPD,3)_":"_WPDA
+                    quit:WPD=""
+
+
+                write wd,!
+
+
+
+            }
+
+        }
+    }
+
+    if ( Count = 0 ){
+
+        write "該当するデータはありません。"
+
+    }
+    quit
+
+    */
+
+addSES4(userCode,startData,workPlace)
+
+    if (startData = "") quit
+
+    //set sd = $s( startData '= "":$zdh(startData, 3), 1:"")
+    set sd = $zdh(startData, 3)
+    set ^User(userCode, "SES", sd) = workPlace
+
+    quit
+
+addShikaku4(userCode,qualified,passData)
+
+    set pd = $s( passData '= "":$zdh( passData, 3 ), 1:"" )
+    if (qualified '= ""){
+
+        /*
+
+        set fk =""
+        set nk = 1
+        if ($data(^User(userCode,"資格")) = 10 ){
+
+            set qn = 0
+            
+            for {
+
+                set fk = fk +1 
+                if ($Data(^User(userCode,"資格",fk)) '= 0){
+                    set nk = nk +1
+                }else{
+                    quit
+                }
+            }
+
+        }
+        */
+
+        set ^User(userCode,"資格",$i(^User(userCode, "資格"))) = qualified_"^"_pd
+    }else{
+        write "資格名が入力されていません。"
+    }
+
+    quit
+
+
+layoutGet(data)
+    set wdata = ""
+
+    set $p(wdata, ":", 1) = $tr($p(data, "^", 1),"^",":")
+    set $p(wata, ":", 2) = $tr($p(data, "^", 2), "^", ":")
+    set $p(wdata, ":", 3) = $zd($p(data, "^", 3), 3)
+    set $p(wdata, ":", 4) = $case($p(data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+    
+    quit wdata
+
+layoutGet4(data)
+    set returnData = ""
+
+    set $p(returnData, "^", 1) = $tr($p(data, "^", 1),"^",":")
+    set $p(returnData, "^", 2) = $tr($p(data, "^", 2), "^", ":")
+    set $p(returnData, "^", 3) = $zd($p(data, "^", 3), 3)
+    set $p(returnData, "^", 4) = $case($p(data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+    
+    quit returnData
+
+    //CONTINUE:gender'=1 中断して次の
+    //set:gender=1 a=1 ：の後はスペースをいれない。sの後付けなどで使用されるスペースと間違えられるため。
+
+layoutGet4s(Num, &wdata)
+    set data = ^User(Num)
+    kill wdata
+
+    set $p(wdata, ":", 1) = $tr($p(data, "^", 1),"^",":")
+    set $p(wdata, ":", 2) = $tr($p(data, "^", 2), "^", ":")
+    set $p(wdata, ":", 3) = $zd($p(data, "^", 3), 3)
+    set $p(wdata, ":", 4) = $case($p(data, "^", 4), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+
+    set k = "", p = 0
+    for {
+        set k = $order(^User(Num, "資格", k), 1, dt) quit:k=""
+        set $p(item,":", 1) = $p(dt, "^", 1)
+        set $p(item,":", 2) = $s($p(dt, "^", 2)="":"", 1:$zd($p(dt, "^", 2), 3))
+        set p=p+1
+        set wdata("T", p) = item
+    }
+
+    set k = "", p = 0
+    for {
+        set k = $order(^User(Num, "SES", k), 1, dt) quit:k=""
+        set $p(item,":", 1) = $zd(k, 3)
+        set $p(item,":", 2) = dt
+        set p=p+1
+        set wdata("S", p) = item
+    }
+
+
+    //復習3
+LineUpBirthday
+
+    //生年月日昇順の作業用グローバルを作成
+    set Id = ""
+    kill ^||BirthIndex
+    for{
+        set Id = $order( ^Customer(Id), 1 ,Data ) quit:Id=""
+        set BirthDay =$s($lg( Data, 3) '="":$zd($lg( Data, 3),3),1:"") 
+        set ^||BirthIndex(BirthDay) = Id
+    }
+
+    zw (^||BirthIndex)
+    //生年月日昇順に顧客情報を表示
+
+    set Date = "",DispData=""
+
+    for{
+        //顧客番号を取得
+
+        set Date = $order( ^||BirthIndex( Date ), 1, IdNumber ) quit:Date=""
+
+            do createData(IdNumber,.Data)
+            
+            write:Data'="" Data,!
+            write:Data'="" "--------------------",!
+    }
+
+
+
+
+createData( Id, &returnData )  
+
+    set key=1,returnData=""
+
+    set data = ^Customer(Id)
+    set sex = $case($li(data,5), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+    set item = $lb(Id, $li(data,1), $li(data,2), $zd($li(data,3),3), $zd($li(data,4),3), sex)
+
+    for title="顧客番号","氏名","カナ","生年月日","登録日","性別"{
+        set returnData = returnData_title_":"_$li(item,key)_$c(13,10)
+        set key=key+1
+    }
+
+    //電話番号
+    set returnData = returnData_"電話番号:"_$c(13,10)
+    set number = $li(data,6)
+    set key = 1
+
+    for{
+        set returnData = returnData_$lg(number,key)_$c(13,10) quit:$lg(number,key)=""
+        set key= key+1
+    }
+
+    quit
+
+
+    
+    quit

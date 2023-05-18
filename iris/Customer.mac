@@ -1,0 +1,784 @@
+ROUTINE Customer
+saveData( Id, Name, Kana, Birth, SignUp, Sex, Number )
+
+    set return = "",NUMBER=""
+    set CustomerData = ""
+
+    //顧客番号と氏名必須、また顧客番号は4桁
+    // 顧客番号チェック
+    if (Id = "") {
+
+    } elseif ('$d(^Customer(Id))) {
+
+    }
+
+    // 氏名チェック
+    if (Name '= "") {
+
+    }
+
+    set return = $s( ( Id = "" ):"顧客番号を入力してください。",( $d( ^Customer( Id ) ) '= 0 ):"顧客番号が既に使用されています。",((999 > Id ) & (Id > 10000 )):"顧客番号数に誤りがあります。",( Name = "" ):"氏名を入力してください。",1:"")
+
+    set pnumber = $lfs(Number,",",0)
+    set key = 1, count=1, checknum=""
+
+    // 電話番号の取得
+    for{
+
+        set PN =  $lg( pnumber, key ) quit:PN=""
+        //半角にする
+        set PN = $tr(PN,"０１２３４５６７８９","0123456789")
+
+        //電話番号桁数確認、電話番号は１２桁未満、頭文字０
+        if ( 11 < $l(PN) ) ! ( $e(PN,1,1) '= 0) {
+            set checknum= checknum_$s(checknum="":key,1:","_key)
+        }else{
+            set $li(NUMBER,count) = PN
+            set count = count+1
+        }
+
+        set key = key+1
+
+    }
+
+    // 電話番号エラー
+    set:checknum'="" return = return_$s(return="":checknum,1:","_checknum)_"番目の電話番号に誤りがあります。" 
+    quit:return'="" return
+
+    set BIRTH = $s( Birth'="":$zdh($tr( Birth, "/", "-"), 3 ), 1:"" )
+    set SIGNUP = $s( SignUp'="":$zdh( $tr( SignUp, "/", "-"), 3 ), 1:"" )
+
+    set CustomerData = $lb(Name,Kana,BIRTH,SIGNUP,Sex,NUMBER)
+    set ^Customer(Id) = CustomerData 
+
+    quit "1"
+
+    //20230420 createData完了、getListに組み込み…条件がどちらも入力された場合については考慮する必要あり
+    //^Customer(code)=$lb(Name,Kana,Birthday,data,sex,$lb(phoneNumber1,phoneNumber2...))
+getList( Id, Kana)
+
+    set return=""
+    kill getData
+
+    do {
+        if (id '= "") {
+            set:$d(^Customer(Id))=0 return="該当する顧客番号はありません。"
+            quit:return'=""
+            
+            do createData(Id,.Data)
+
+            write:Data'="" Data,!
+            write:Data'="" "--------------------",!
+        }
+        
+        if (Kana '= "") {
+
+
+            set:count=0 return="該当する顧客情報はありません。"
+            quit
+        }
+
+        if ((Id = "") & (Kana = "")){
+
+        }
+    } while(0)
+
+    quit return
+
+
+
+
+    //顧客番号検索
+    /*
+    if ( Id'="" ){
+
+        set:$d(^Customer(Id))=0 return="該当する顧客番号はありません。"
+        if (return = "") {
+            do createData(Id,.Data)
+
+            write:Data'="" Data,!
+            write:Data'="" "--------------------",!
+        }
+        //quit:return'="" return
+
+        
+    }
+    */
+
+    //カナ頭文字検索
+    set count =0,id=""
+
+    if ( Kana '= "" ){
+
+        for{
+            set id= $order(^Customer(id),1, rData) quit:id=""
+
+            if ($e($li(rData,2),1,1)=Kana){
+
+                do createData(id,.Data)
+
+                write:Data'="" Data,!
+                write:Data'="" "--------------------",!
+                set count = count+1
+            }
+        }
+
+        set:count=0 return="該当する顧客情報はありません。"
+        quit:return'="" return
+
+    //条件入力なし
+    }
+    
+    if ((Id = "") & (Kana = "")){
+
+        for{
+            set id=$order(^Customer(id),1, Data) quit:id=""
+
+            do createData(id,.Data)
+
+            write:Data'="" Data,!
+            write:Data'="" "--------------------",!
+
+        }
+
+    }
+
+    quit return
+
+createData( Id, &returnData )  
+
+    set key=1,returnData=""
+
+    set data = ^Customer(Id)
+    set sex = $case($li(data,5), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+    set item = $lb(Id, $li(data,1), $li(data,2), $zd($li(data,3),3), $zd($li(data,4),3), sex)
+
+    for title="顧客番号","氏名","カナ","生年月日","登録日","性別"{
+        set returnData = returnData_title_":"_$li(item,key)_$c(13,10)
+        set key=key+1
+    }
+
+    //電話番号
+    set returnData = returnData_"電話番号:"_$c(13,10)
+    set number = $li(data,6)
+    set key = 1
+
+    for{
+        set returnData = returnData_$lg(number,key)_$c(13,10) quit:$lg(number,key)=""
+        set key= key+1
+    }
+
+    quit
+
+    //集計数のみ表示
+totalingNenrei
+
+    set Id = "",nendai = ""
+    set now = $p($zd($h,3),"-",1)
+    kill nenreiList
+
+    //年代別顧客数を数えてnenreiListに代入
+    for{
+        set Id = $order(^Customer(Id),1,Data) quit:Id=""
+        set umaredosi = $p($zd($li(Data,3),3),"-",1)
+        set nendai = $e((now - umaredosi),1,1)*10
+
+        if ($d(nenreiList(nendai))'=0){
+            set nenreiList(nendai) = nenreiList(nendai) +1
+        }else{
+            set nenreiList(nendai) = 1
+        }
+        
+    }
+    
+    //集計データの書き出し
+    set nendaiKey = "",total = 0
+    for{
+        set nendaiKey = $order(nenreiList(nendaiKey),1,nendaiData) quit:nendaiKey=""
+        set total = total + nendaiData
+        w nendaiKey_"代:"_nendaiData_"人",!
+    }
+    w "合計:"_total_"人",!
+
+    quit
+
+totalingSeibetsu
+
+    set Id = "",seibetsu = ""
+    kill seibetsuList
+
+    //性別別顧客数を数えてseibetsuListに代入
+    for{
+        set Id = $order(^Customer(Id),1,Data) quit:Id=""
+        set seibetsu = $case($li(Data,5),0:"不明",1:"男性",2:"女性",9:"その他")
+
+        if ($d(seibetsuList(seibetsu))'=0){
+            set seibetsuList(seibetsu) = seibetsuList(seibetsu) +1
+        }else{
+            set seibetsuList(seibetsu) = 1
+        }
+
+    }
+
+    //集計データ書き出し
+    set seibetsuKey = "",total=0
+    for{
+        set seibetsuKey = $order(seibetsuList(seibetsuKey),1,seibetsuData) quit:seibetsuKey=""
+        set total = total + seibetsuData
+        w seibetsuKey_":"_seibetsuData_"人",!
+    }
+
+    w "合計："_total_"人"
+
+    quit
+
+
+    //集計数と顧客情報を表示
+totalingNenrei2
+    
+    set Id = "",nendai = ""
+    set now = $p($zd($h,3),"-",1)
+    kill nenreiList,idList,customerList
+
+    //年代別顧客数を数えてnenreiListに代入＆顧客番号をidListに代入
+    for{
+        set Id = $order(^Customer(Id),1,Data) quit:Id=""
+        set umaredosi = $p($zd($li(Data,3),3),"-",1)
+        set nendai = $e((now - umaredosi),1,1)*10
+        set titleList = $lb("顧客番号","氏名","カナ","生年月日","登録日","性別","電話番号")
+        set Number = ""
+
+        //電話番号をリストから文字列へ変更  
+        set numberKey=1
+        for{
+            set phoneNumber = $lg($li(Data,6),numberKey) quit:phoneNumber=""
+            if (phoneNumber '= ""){
+                set Number = Number_phoneNumber_$c(13,10)
+            }else{
+                set Number = phoneNumber_$c(13,10)
+            }
+            set numberKey = numberKey +1
+        }
+
+        //リストに入れるか、書き出しの際に変換するか
+        set $li(Data,7) = Number
+        set $li(Data,6) =$case($lg(Data,5), 0:"不明", 1:"男性", 2:"女性", 9:"その他")
+        set $li(Data,5) = $s($lg(Data,4)="":"",1:$zd($li(Data,4),3))
+        set $li(Data,4) = $s($lg(Data,3)="":"",1:$zd($li(Data,3),3))
+        set $li(Data,3) = $li(Data,2)
+        set $li(Data,2) = $li(Data,1)
+        set $li(Data,1) = Id
+
+        if ($d(nenreiList(nendai))'=0){
+            set count = (nenreiList(nendai))+1
+            set nenreiList(nendai) = count
+            set $li(idList(nendai), count) = Id
+            set $li(customerList(nendai),count) = Data
+        }else{
+            set nenreiList(nendai) = 1
+            set $li(idList(nendai), 1) = Id
+            set $li(customerList(nendai),1) = Data
+        }
+
+    }
+    
+    //集計データの書き出し
+    set nendaiKey = "",total = 0,customerData=""
+    //年代別
+    for{
+        set nendaiKey = $order(nenreiList(nendaiKey),1,nendaiData) quit:nendaiKey=""
+        set total = total + nendaiData
+        write "<<<<"_nendaiKey_"代:"_nendaiData_"人"_">>>>",!
+        write "-------------------------",!
+        
+        set idKey = 0
+
+        //顧客番号
+        for{
+            set idKey = idKey+1
+            set Data = $lg(idList(nendai),idKey) quit:Data=""
+            set dataKey =0,dataCount =0
+
+            //個々の情報
+            for{
+                set dataKey = dataKey+1
+                set Data2 = $lg($lg(customerList(nendaiKey),idKey),dataKey) quit:Data2=""
+
+                if ($g(Data2)'=""){
+                    write $li(titleList,dataKey)_":"
+                    write:$li(titleList,dataKey)="電話番号" !
+                    write Data2,!
+                    set dataCount=dataCount+1
+                }
+            }
+
+            write:dataCount'=0 "......................",!
+        }
+
+    //write "-------------------------",!
+    }
+
+    w "合計:"_total_"人",!
+    
+    quit
+
+totalingSeibetsu2
+
+    set Id = "",seibetsu = ""
+    set titleList = $lb("顧客番号","氏名","カナ","生年月日","登録日","性別","電話番号")
+    kill seibetsuList,idList,customerList
+
+
+    //性別別顧客数を数えてseibetsuListに代入
+    for{
+        set Id = $order(^Customer(Id),1,Data) quit:Id=""
+        set seibetsu = $case($li(Data,5),0:"不明",1:"男性",2:"女性",9:"その他")
+        set Number = ""
+
+        if ($d(seibetsuList(seibetsu))'=0){
+            set seibetsuList(seibetsu) = seibetsuList(seibetsu) +1
+        }else{
+            set seibetsuList(seibetsu) = 1
+        }
+
+        //電話番号をリストから文字列へ変更  
+        set numberKey=1
+        for{
+            set phoneNumber = $lg($li(Data,6),numberKey) quit:phoneNumber=""
+            if (phoneNumber '= ""){
+                set Number = Number_phoneNumber_$c(13,10)
+            }else{
+                set Number = phoneNumber_$c(13,10)
+            }
+            set numberKey = numberKey +1
+        }
+
+        //リストに入れるか、書き出しの際に変換するか
+        set $li(Data,7) = Number
+        set $li(Data,6) = seibetsu
+        set $li(Data,5) = $s($lg(Data,4)="":"",1:$zd($li(Data,4),3))
+        set $li(Data,4) = $s($lg(Data,3)="":"",1:$zd($li(Data,3),3))
+        set $li(Data,3) = $li(Data,2)
+        set $li(Data,2) = $li(Data,1)
+        set $li(Data,1) = Id
+
+    }
+
+    //集計データ書き出し
+    set seibetsuKey = "",total=0
+    for{
+        set seibetsuKey = $order(seibetsuList(seibetsuKey),1,seibetsuData) quit:seibetsuKey=""
+        set total = total + seibetsuData
+        w seibetsuKey_":"_seibetsuData_"人",!
+    }
+
+    w "合計："_total_"人"
+
+    quit
+
+
+    //復習3
+    //1　生年月日順の顧客情報を表示するメソッドを作成
+LineUpBirthday
+
+    //生年月日昇順の作業用グローバルを作成
+    /* 20230501
+    set Id = ""
+    kill ^||BirthIndex
+    for{
+        set Id = $order( ^Customer( Id ), 1, Data ) quit:Id=""
+        set BirthDay =$s($lg( Data, 3) '="":$lg( Data, 3), 1:"") 
+    set ^BirthIndex( BirthDay ) = Id
+    }
+
+    //生年月日昇順に顧客情報を表示
+    set Date = ""
+
+    for{
+        set Date = $order( ^||BirthIndex( Date ), 1, IdNumber ) quit:Date=""
+        do mkCustomerData(IdNumber,.Data)
+
+        if ( Data'="" ){
+            write Data,!,"--------------------",!
+        }
+            
+    }
+
+    */
+
+    //20230508
+    set Id = ""
+    kill ^||CustomerI
+
+    for{
+        set Id = $order( ^Customer( Id ), 1, Data ) quit:Id=""
+        set BirthData = $lg( Data, 3)
+        /*TEST
+        write "Data:",Id,":",$zd(BirthData,3),!
+        BirthdataはNullだとキーが無く、登録出来ないためデータがある場合のみ登録作業をする
+        */
+        set:BirthData'="" ^||CustomerI( "BirthData", BirthData, $i( ^||CustomerI( "BirthData", BirthData ) )) = Id
+        
+    }
+
+    /*TEST
+    zw (^||CustomerI)
+    */
+
+    set Data = ""
+    
+    for{
+        set Data = $order( ^||CustomerI( "BirthData", Data) ) quit:Data=""
+        write Data,!
+        set Num = ""
+        for{
+            set Num = $order( ^||CustomerI( "BirthData", Data, Num ), 1, Id) quit:Num=""
+            do mkCustomerData( Id, .CustomerData)
+
+            write:CustomerData'="" CustomerData,!,"-----------------------------",!
+
+        }
+    }
+
+
+    //2　顧客情報登録時にインデックスを作成するよう修正する
+SaveData( Id, Name, Kana, BirthDay, SignUpDate="", Sex=0, PhoneNumber)
+
+    set return = ""
+
+    //Idチェック(入力・4桁・重複)
+    if ( Id = ""){
+        set return = "顧客番号が入力されていません。"
+    } elseif ( (Id < 1000 ) ! ( 9999 < Id )){
+        set return = "顧客番号の桁数が誤っています。"
+    } elseif( $d( ^Customer( Id ) ) '= 0 ){
+        set return = "入力された顧客番号は既に使用されています。"
+    }
+
+    //氏名チェック（入力）
+    if ( Name = ""){
+        set return = return_$c(13,10)_"氏名が入力されていません。"
+    }
+
+    //カナチェック（入力）
+    if ( Kana = ""){
+        set return = return_$c(13,10)_"カナが入力されていません。"
+    }
+
+    //生年月日チェック（入力）
+    if ( BirthDay = ""){
+        set return = return_$c(13,10)_"生年月日が入力されていません。"
+    }
+
+    //電話番号チェック（11桁まで）
+    set CheckKey = 1
+    set Number = $lfs( $tr( PhoneNumber, "０１２３４５６７８９", "0123456789"), ",", 0 )
+
+    for{
+        set pNumber = $lg( Number, CheckKey ) quit:pNumber=""
+        if ( 11 < $l( pNumber ) ) ! ( $e( pNumber, 1, 1 ) '= 0 ){
+            set return = return_$c(13,10)_CheckKey_"番目の電話番号に誤りがあります。"
+        }
+        set CheckKey = CheckKey+1
+    }
+
+    //入力に誤りがあればquit
+    quit:return'="" return
+
+    //顧客情報グローバルに書き込み
+    set BIRTHDAY =  $zdh( $tr( BirthDay, "/", "-" ), 3 )
+    set SIGNUPDATE = $s( SignUpDate'="":$zdh( $tr( SignUpDate, "/", "-" ), 3 ), 1:"" )
+    set CustomerData = $lb( Name, Kana, BIRTHDAY, SIGNUPDATE, Sex, Number )
+    set ^Customer( Id ) = CustomerData 
+
+    //生年月日インデックスに書き込み
+    /*20230501
+    set ^BirthIndex( BIRTHDAY ) = Id
+    set ^CustomerIdx("birthdate", BIRTHDAY)=""
+    */
+
+    //20230508
+    set ^CustomerI( "BirthData", BIRTHDAY, $i( ^CustomerI( "BirthData", BIRTHDAY ) )) = Id
+    quit
+
+
+    //2-2　1をインデックスを参照するよう修正する
+LineUpBirthday2
+
+    //生年月日昇順に顧客情報を表示
+
+    /*20230501
+    set Date = ""
+    for{
+        set Date = $order( ^BirthIndex( Date ), 1, IdNumber ) quit:Date=""
+        do mkCustomerData( IdNumber, .Data )
+
+        if ( Data '= "" ){
+            write Data,!,"--------------------",!
+        }
+            
+    }]*/
+
+    //20230508
+    set Date = ""
+    for{
+        set Date = $order( ^CustomerI( "BirthData", Date )) quit:Date=""
+        set Num = ""
+        for{
+            set Num = $order( ^CustomerI( "BirthData", Date, Num ), 1, Id) quit:Num=""
+            /*TEST
+            write Num,!
+            */
+            do mkCustomerData( Id, .CustomerData)
+
+            write:CustomerData'="" CustomerData,!,"--------------------------------",!
+        }
+
+    }
+
+    quit
+
+    //4-2　顧客情報登録時、生年月日と登録日に対して日付形式チェックを行い、形式が異なる場合はメッセージを表示し処理を中断するよう改修する
+SaveData2( Id, Name, Kana, BirthDay, SignUpDate, Sex=0, PhoneNumber )
+    
+    set return = ""
+
+    //Idチェック(入力・4桁・重複)
+    if ( Id = ""){
+        set return = "顧客番号が入力されていません。"
+    } elseif ( ( Id < 1000 ) ! ( 9999 < Id )){
+        set return = "顧客番号の桁数が誤っています。"
+    } elseif( $d(^Customer( Id )) '= 0 ){
+        set return = "入力された顧客番号は既に使用されています。"
+    }
+
+    //氏名チェック（入力）
+    if ( Name = ""){
+        set return = return_$c( 13, 10 )_"氏名が入力されていません。"
+    }
+
+    //カナチェック（入力）
+    if ( Kana = ""){
+        set return = return_$c( 13, 10 )_"カナが入力されていません。"
+    }
+
+    //生年月日チェック
+    /*20230501
+    set BType = "NULLNG"
+    do CheckData( BirthDay )
+    set BFlag = $$CheckData(BirthDay, BType,.BFlag)
+    //if ( BFlag = 0 ){
+        set return = return_$c( 13, 10 )_"生年月日が正しくありません。"
+    }
+    */
+
+    //20230508 $$CheckDataで、CheckDataの戻り値を取得する
+    set CheckTypeB = ""
+    if ( $$CheckData( BirthDay, CheckTypeB) = 0 ){
+        set return = return_$c( 13, 10 )_"生年月日が正しくありません。"
+    }
+    
+
+    //登録日チェック
+    /*20230501
+    set SType = "NULLNG"
+    do CheckData( SignUpDate, SType, .SFlag )
+    if ( SFlag = 0 ){
+        set return = return_$c( 13, 10 )_"登録日が正しくありません。"
+    }
+    */
+
+    //20230508
+    set CheckTypeS = "NullOk"
+
+    if ( $$CheckData( SignUpDate, CheckTypeS ) = 0){
+        set return = return_$c( 13, 10 )_"登録日が正しくありません。"
+    }
+
+    //電話番号チェック（11桁まで）
+    set CheckKey = 1
+    set Number = $lfs( $tr( PhoneNumber, "０１２３４５６７８９", "0123456789"), ",", 0 )
+
+    for{
+        set pNumber = $lg( Number, CheckKey ) quit:pNumber=""
+
+        if ( 11 < $l( pNumber ) ) ! ( $e( pNumber, 1, 1 ) '= 0 ){
+            set return = return_$c( 13, 10 )_CheckKey_"番目の電話番号に誤りがあります。"
+        }
+        set CheckKey = CheckKey + 1
+    }
+
+    //入力に誤りがあればquit
+    quit:return'="" return
+
+    //顧客情報グローバルに書き込み
+    set BIRTHDAY =  $zdh( $tr( BirthDay, "/", "-" ), 3 )
+    set SIGNUPDATE = $zdh( $tr( SignUpDate, "/", "-"), 3 )
+    set CustomerData = $lb( Name, Kana, BIRTHDAY, SIGNUPDATE, Sex, Number )
+
+    quit
+    set ^Customer( Id ) = CustomerData 
+
+    //生年月日インデックスに書き込み 20230501
+    //set ^BirthIndex( BIRTHDAY ) = Id
+
+    //20230509
+    set ^CustomerI( "BirthData", BIRTHDAY, $i( ^CustomerI( "BirthData", BIRTHDAY ) )) = Id
+
+    quit
+
+
+
+    //3　顧客情報表示のロジックが複数あるので関数化する
+mkCustomerData( Id, &returnData )  
+
+    set data = ^Customer( Id )
+    set sex = $case( $li( data, 5), 0:"不明", 1:"男性", 2:"女性", 9:"その他" )
+    set Birthday = $s( $lg( data, 3)'="":$zd( $li( data, 3 ), 3), 1:"" )
+    set Signupdata = $s( $lg( data, 4)'="":$zd( $li( data, 4 ), 3), 1:"" )
+
+    set item = $lb( Id, $li( data,1), $li( data, 2), Birthday, Signupdata, sex )
+
+    set key = 1, returnData=""
+    for title = "顧客番号", "氏名", "カナ", "生年月日", "登録日", "性別"{
+        set returnData = returnData_title_":"_$li( item, key )_$c( 13, 10 )
+        set key = key + 1
+    }
+
+    //電話番号
+    set returnData = returnData_"電話番号:"_$c( 13, 10 )
+    set number = $li( data, 6 )
+
+    set key = 1
+    for{
+        set returnData = returnData_$lg( number, key )_$c( 13, 10 ) quit:$lg( number,key)=""
+        set key = key + 1
+    }
+
+    /*TEST
+    zw (returnData)
+    */
+
+    quit
+
+    
+    //4　日付形式のチェック関数を作成する
+    //Data=日付（yyyy/mm/dd）
+    //Type=Null可否。
+    //""：NULLNG、NullOK：NULLOK
+CheckData( Data, Type="")
+
+    //=========================================================================
+    //●Data = "" & Type = NULLOK
+    /*20230501
+
+    set returnFlag = 1
+    //NULLチェック
+    if ( ( Data = "" ) & ( Type = "NULLNG" ) ) {
+        set returnFlag = 0
+    }
+
+    //日付チェック(1840/12/31~9999/12/31)
+    set Year = $p( Data, "/", 1 )
+    set Month = $p( Data, "/", 2 )
+    set:Month'="" Month = $e(100 + Month, 2, 3)
+
+    set Day = $p( Data, "/", 3 )
+
+    if ( ( Year < 1840 ) ! ( 9999 < Year ) ){
+        set returnFlag = 0
+    } elseif( ( Year = 1840 ) & ( Year_Month_Day < 18401231 ) ){
+        set returnFlag = 0
+    }
+
+    if ( ( Month < 1 ) ! ( 12 < Month ) ){
+        set returnFlag = 0
+    }
+    if ( ( Day < 1 ) ! ( 31 < Day ) ){
+        set returnFlag = 0
+
+    } elseif ( 29 < Day ){
+        if ( ( Day = 30 ) & ( Month = 2) ) {
+            set returnFlag = 0
+        } elseif ( ( Day = 31 ) & ( ( Month = 4 ) ! ( Month = 6 ) ! ( Month = 9 ) ) ){
+            set returnFlag = 0
+        }
+    } 
+
+    quit returnFlag
+
+    */
+
+    //20230508
+    /*
+    Data '= "" & Type = "" 〇
+    Data '= "" & Type '= "" 〇
+    Data = "" & Type = "" ×
+    Data = "" & Type '= "" 〇
+    */
+
+    if ( ( Data '= "" ) ! ( Type '= "" ) ){
+        //NullNG
+        if ( Data '= ""  ){
+
+            //日付チェック(1840/12/31~9999/12/31)
+            set Year = $p( Data, "/", 1 )
+
+            //Yearは4桁、1840~9999
+            if (( 1840 <= Year ) & ( Year <= 9999 )){
+                set Month = $p( Data, "/", 2 )
+                //Monthは2桁、1～12
+                set:Month'="" Month = $e( 100 + Month, 2, 3 ) 
+                if ( ( 1 <= Month ) & ( Month <= 12 )){
+
+                    set Day = $p( Data, "/", 3 )
+                    //Dayは2桁、1～31
+                    set:Day'="" Day = $e( 100 + Day, 2, 3 )
+                    if ( ( 1 <= Day ) & ( Day <= 31 )){
+
+                        // YearMonthDay = 18400101~18401230
+                        if ( 18401230 < Year_Month_Day ){
+
+                            //30日以降の日付確認
+                            if ( 30 <= Day ){
+
+                                if ( Month = 2 ){
+                                    set flg = 0
+                                } elseif ( ( Day = 31 ) & (( Month = 4 ) ! ( Month = 6 ) ! ( Month = 9))){
+                                    set flg = 0
+                                //確認完了
+                                }else{
+                                    set flg = 1
+                                }
+                            //1~29日　確認完了
+                            }else{
+                                set flg = 1
+                            }
+
+                        }else{
+                            set flg = 0
+                        }
+
+                    //Day1未満32以上
+                    }else{
+                        set flg = 0
+                    }
+                //Month1未満13以上
+                }else{
+                    set flg = 0
+                }
+            //Year 1840未満10000以上
+            }else{
+                set flg = 0
+            }
+
+        //NullOKの場合…
+        }else{
+            set flg =  1
+        }
+
+    }else{
+        set flg =  0
+    }
+
+    quit flg
